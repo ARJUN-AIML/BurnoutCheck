@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BurnoutCheck</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <button class="theme-toggle" onclick="toggleTheme()">
+    <span id="themeIcon">🌙</span>
+  </button>
+
+  <main class="app">
+    <section class="intro">
+      <h1>BurnoutCheck</h1>
+      <p class="tagline">A small self-check I built for students like me</p>
+      <p class="hint">Takes less than 30 seconds</p>
+    </section>
+
+    <div class="progress">
+      <div id="progressBar"></div>
+    </div>
+
+    <section class="assessment card">
+      <h2>Quick Self Check</h2>
+
+      <div class="group">
+        <h3>Recovery</h3>
+        <label>Sleep (hours)</label>
+        <input type="number" id="sleep" placeholder="e.g. 7" min="0" max="24" step="0.5"
+          oninput="clampValue(this, 0, 24)">
+
+        <label>Breaks during the day <span class="hint-text"
+            onclick="showHint(event, 'Short rest periods (5-10 min) between study/work sessions')">ⓘ</span></label>
+        <select id="breaks">
+          <option value="" selected disabled>Select...</option>
+          <option value="0">Yes</option>
+          <option value="1">Sometimes</option>
+          <option value="2">Rarely</option>
+        </select>
+      </div>
+
+      <div class="group">
+        <h3>Load</h3>
+        <label>Screen time (hours)</label>
+        <input type="number" id="screen" placeholder="e.g. 6" min="0" max="24" step="0.5"
+          oninput="clampValue(this, 0, 24)">
+
+        <label>Study/Work pressure</label>
+        <select id="pressure">
+          <option value="" selected disabled>Select...</option>
+          <option value="0">Low</option>
+          <option value="1">Moderate</option>
+          <option value="2">High</option>
+        </select>
+      </div>
+
+      <div class="group">
+        <h3>State</h3>
+        <label>Stress</label>
+        <select id="stress">
+          <option value="" selected disabled>Select...</option>
+          <option value="1">1 - Very Low</option>
+          <option value="2">2 - Low</option>
+          <option value="3">3 - Medium</option>
+          <option value="4">4 - High</option>
+          <option value="5">5 - Very High</option>
+        </select>
+
+        <label>Motivation</label>
+        <select id="motivation">
+          <option value="" selected disabled>Select...</option>
+          <option value="1">1 - Very Low (No drive, hard to start tasks)</option>
+          <option value="2">2 - Low (Procrastinating, feels like a chore)</option>
+          <option value="3">3 - Moderate (Neutral, just getting by)</option>
+          <option value="4">4 - High (Interested, generally productive)</option>
+          <option value="5">5 - Very High (Energetic, excited to work)</option>
+        </select>
+      </div>
+
+      <button id="analyzeBtn" onclick="analyze()">Run Assessment</button>
+    </section>
+
+    <section class="result card hidden" id="result">
+      <h2>Assessment Result</h2>
+      <p class="risk" id="riskLevel"></p>
+
+      <div class="signals">
+        <h3>Patterns We Noticed</h3>
+        <ul id="signalList"></ul>
+      </div>
+
+      <div class="actions">
+        <h3>Things That Might Help</h3>
+        <ul id="actionsList"></ul>
+      </div>
+
+      <p class="confidence" id="confidence"></p>
+
+      <button onclick="downloadReport()">Download Summary</button>
+      <button onclick="location.reload()">Run Again</button>
+    </section>
+
+    <footer>
+      <p>This tool is for awareness only. Not medical advice.</p>
+    </footer>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
