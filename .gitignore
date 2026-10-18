@@ -1,0 +1,8 @@
+# Test-only dependency (see Development section in README)
+node_modules/
+
+# Local dev-server log
+.server.log
+
+# Temporary browser-audit output
+.tmp-audit/

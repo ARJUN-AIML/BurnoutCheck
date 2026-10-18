@@ -269,19 +269,140 @@ function runAnalysis() {
     if (screen > 6) actions.push("Reduce screen time by 1-2 hours for better mental clarity");
   }
 
-  // === CONFIDENCE CALCULATION ===
-  const dataPoints = [sleep, breaks, screen, pressure, stress, motivation].filter(v => v !== null && v !== "").length;
-  const confidence = dataPoints === 6 ? "High" : dataPoints >= 4 ? "Moderate" : "Low";
+  // === ML ENSEMBLE PREDICTION ===
+  // Risk level now comes from the 4-model ensemble (logistic regression,
+  // MLP neural net, random forest, k-NN). The rule engine above still
+  // provides the explainable patterns/suggestions, and doubles as a
+  // fallback if the model artifact failed to load.
+  const hasML = typeof BurnoutML !== "undefined" && typeof BURNOUT_MODEL !== "undefined";
+  const rawInputs = { sleep, breaks, screen, pressure, stress, motivation };
+  let ml = null;
+  let explanation = null;
+  if (hasML) {
+    ml = BurnoutML.predict(rawInputs, BURNOUT_MODEL);
+    explanation = BurnoutML.explain(rawInputs, BURNOUT_MODEL);
+  }
+  const finalRisk = ml ? ml.label : risk;
 
   // === DISPLAY RESULTS ===
   document.getElementById("result").classList.remove("hidden");
-  document.getElementById("riskLevel").innerText = `Burnout Risk Level: ${risk}`;
+  document.getElementById("riskLevel").innerText = ml
+    ? `Burnout Risk Level: ${finalRisk} · risk index ${Math.round(ml.riskIndex * 100)}/100`
+    : `Burnout Risk Level: ${finalRisk}`;
 
   renderList("signalList", signals);
   renderList("actionsList", actions);
 
+  if (ml) {
+    renderMLResult(ml, explanation);
+  } else {
+    // Graceful degradation without the model artifact
+    document.getElementById("meterWrap").classList.add("hidden");
+    document.getElementById("driversWrap").classList.add("hidden");
+    document.getElementById("modelDetails").classList.add("hidden");
+    document.getElementById("mlMeta").innerText =
+      "Model unavailable — showing rule-based result.";
+    document.getElementById("confidence").innerText =
+      "Assessment confidence: rules only (ML model artifact did not load)";
+  }
+}
+
+// Render risk meter, model meta line, driver bars and model details
+function renderMLResult(ml, explanation) {
+  const model = BURNOUT_MODEL;
+  const metrics = model.metrics.test;
+
+  // Risk meter animates to the ensemble's risk index
+  const meter = document.getElementById("riskMeter");
+  meter.style.width = "0%";
+  meter.className = "level-" + ml.classIndex;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      meter.style.width = `${Math.round(ml.riskIndex * 100)}%`;
+    });
+  });
+
+  document.getElementById("mlMeta").innerText =
+    `4-model ensemble · ${ml.votes}/4 models agree · confidence ${ml.confidence} ` +
+    `(${Math.round(ml.confidenceScore * 100)}%)`;
+
+  // What's driving the score (occlusion-based contributions)
+  const ul = document.getElementById("driverList");
+  ul.innerHTML = "";
+  const top = explanation.contributions.filter((c) => Math.abs(c.delta) >= 0.01).slice(0, 5);
+
+  if (top.length === 0) {
+    const li = document.createElement("li");
+    li.className = "driver";
+    li.innerText = "No single input dominates — your inputs sit close to neutral baselines.";
+    ul.appendChild(li);
+  } else {
+    // Bars scale against the strongest driver so relative weight is legible
+    const maxAbs = Math.max(...top.map((c) => Math.abs(c.delta)), 1e-9);
+    top.forEach((c, i) => {
+      const pts = Math.max(1, Math.round(Math.abs(c.delta) * 100));
+      const pct = Math.max(8, Math.round((Math.abs(c.delta) / maxAbs) * 100));
+      const dir = c.delta >= 0 ? "up" : "down";
+      const action = BurnoutML.FEEDBACK[c.feature];
+      const li = document.createElement("li");
+      li.className = "driver";
+      li.style.animationDelay = `${0.1 * (i + 1)}s`;
+
+      const wrap = document.createElement("span");
+      wrap.className = "driver-bar-wrap";
+      const bar = document.createElement("span");
+      bar.className = `driver-bar ${dir}`;
+      bar.style.width = `${pct}%`;
+      wrap.appendChild(bar);
+
+      const text = document.createElement("span");
+      text.className = "driver-text";
+      text.innerText = `${c.label} ${dir === "up" ? "raises" : "lowers"} your score ~${pts} pts${
+        action ? ` — ${action}` : ""
+      }`;
+
+      li.appendChild(wrap);
+      li.appendChild(text);
+      ul.appendChild(li);
+    });
+  }
+
   document.getElementById("confidence").innerText =
-    `Assessment confidence: ${confidence} (based on ${dataPoints}/6 inputs)`;
+    `Assessment confidence: ${ml.confidence} — ${ml.votes}/4 models agree; ensemble accuracy ` +
+    `${(metrics.ensemble.accuracy * 100).toFixed(1)}% on held-out test data`;
+
+  // "How the prediction works" details block
+  document.getElementById("modelBlurb").innerText =
+    `The risk level comes from an ensemble of four models trained offline and run entirely in your browser — ` +
+    `no data leaves this page. The patterns and suggestions above come from the rule-based explainer. ` +
+    `On held-out test data the ensemble reached ${(metrics.ensemble.accuracy * 100).toFixed(1)}% accuracy ` +
+    `versus ${(metrics.legacyRules.accuracy * 100).toFixed(1)}% for the previous rule logic ` +
+    `(theoretical maximum for this label noise: ${(metrics.bayesCeiling * 100).toFixed(1)}%).`;
+
+  const rows = [
+    ["Ensemble (4 models)", metrics.ensemble],
+    ["MLP neural network", metrics.models.mlp],
+    ["Random forest (60 trees)", metrics.models.forest],
+    ["Logistic regression", metrics.models.logistic],
+    ["k-nearest neighbours (k=25)", metrics.models.knn],
+    ["Previous rule-based logic", metrics.legacyRules]
+  ];
+  const table = document.getElementById("modelTable");
+  table.innerHTML =
+    "<thead><tr><th>Model</th><th>Accuracy</th><th>Macro F1</th></tr></thead><tbody>" +
+    rows
+      .map(
+        ([name, m]) =>
+          `<tr><td>${name}</td><td>${(m.accuracy * 100).toFixed(1)}%</td><td>${m.macroF1.toFixed(3)}</td></tr>`
+      )
+      .join("") +
+    "</tbody>";
+
+  document.getElementById("modelDisclaimer").innerText =
+    `Accuracy figures are from ${(model.meta.nTest).toLocaleString()} held-out samples of a synthetic dataset ` +
+    `generated from a research-informed labeling function (stress, pressure, sleep, screen time, breaks, ` +
+    `motivation → MBI-SS-style burnout dimensions). They measure agreement with that labeling process, ` +
+    `not clinical validity. BurnoutCheck remains an awareness tool, not a diagnostic one.`;
 }
 
 function renderList(id, items) {
@@ -318,8 +439,19 @@ function downloadReport() {
 
   const riskLevel = document.getElementById("riskLevel").innerText;
   const confidence = document.getElementById("confidence").innerText;
+  const mlMeta = document.getElementById("mlMeta").innerText;
   const signals = [...document.querySelectorAll("#signalList li")].map(li => li.innerText);
   const actions = [...document.querySelectorAll("#actionsList li")].map(li => li.innerText);
+  const drivers = [...document.querySelectorAll("#driverList li")].map(li => li.innerText);
+
+  const driversSection = drivers.length
+    ? `<div class="section">
+        <h2>What Drove The Score</h2>
+        <ul class="signals-list">
+          ${drivers.map(d => `<li>${d}</li>`).join('')}
+        </ul>
+      </div>`
+    : "";
 
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -706,6 +838,7 @@ function downloadReport() {
     <div class="content">
       <div style="text-align: center;">
         <div class="risk-badge">${riskLevel}</div>
+        <p style="color:#6b7280; font-size:0.95rem; margin-top:12px;">${mlMeta}</p>
       </div>
       
       <div class="section">
@@ -737,6 +870,8 @@ function downloadReport() {
           </div>
         </div>
       </div>
+      
+      ${driversSection}
       
       <div class="section">
         <h2>Patterns We Noticed</h2>

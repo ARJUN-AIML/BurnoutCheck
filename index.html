@@ -35,8 +35,8 @@
         <input type="number" id="sleep" placeholder="e.g. 7" min="0" max="24" step="0.5"
           oninput="clampValue(this, 0, 24)">
 
-        <label>Breaks during the day <span class="hint-text"
-            onclick="showHint(event, 'Short rest periods (5-10 min) between study/work sessions')">ⓘ</span></label>
+        <label>Breaks during the day <span class="hint-text" aria-hidden="true"
+            onclick="showHint(event, 'Short rest periods (5-10 min) between study/work sessions')">i</span></label>
         <select id="breaks">
           <option value="" selected disabled>Select...</option>
           <option value="0">Yes</option>
@@ -90,6 +90,20 @@
       <h2>Assessment Result</h2>
       <p class="risk" id="riskLevel"></p>
 
+      <div class="meter" id="meterWrap">
+        <div class="meter-track">
+          <div id="riskMeter"></div>
+        </div>
+        <div class="meter-labels"><span>Low</span><span>Medium</span><span>High</span></div>
+      </div>
+
+      <p class="ml-meta" id="mlMeta"></p>
+
+      <div class="drivers" id="driversWrap">
+        <h3>What's Driving Your Score</h3>
+        <ul id="driverList"></ul>
+      </div>
+
       <div class="signals">
         <h3>Patterns We Noticed</h3>
         <ul id="signalList"></ul>
@@ -102,6 +116,13 @@
 
       <p class="confidence" id="confidence"></p>
 
+      <details class="model-details" id="modelDetails">
+        <summary>How the prediction works</summary>
+        <p class="model-blurb" id="modelBlurb"></p>
+        <table class="model-table" id="modelTable"></table>
+        <p class="disclaimer-sm" id="modelDisclaimer"></p>
+      </details>
+
       <button onclick="downloadReport()">Download Summary</button>
       <button onclick="location.reload()">Run Again</button>
     </section>
@@ -112,6 +133,8 @@
 
   </main>
 
+  <script src="ml/engine.js"></script>
+  <script src="ml/model.js"></script>
   <script src="app.js"></script>
 </body>
 
