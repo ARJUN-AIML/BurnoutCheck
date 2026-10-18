@@ -1,5 +1,7 @@
 # BurnoutCheck
 
+**Live app:** https://site-4cb9a72edd6a456b873d5b847b142769.freebuff.page
+
 BurnoutCheck is a simple frontend web app I built to help students reflect on early signs of burnout based on everyday habits.
 
 It’s not a diagnostic tool.  

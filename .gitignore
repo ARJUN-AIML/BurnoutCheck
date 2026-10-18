@@ -6,3 +6,6 @@ node_modules/
 
 # Temporary browser-audit output
 .tmp-audit/
+
+# Deployment bundle (static build output)
+deploy/
