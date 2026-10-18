@@ -187,7 +187,7 @@ async function main() {
   if (created.length === 1 && typeof created[0].text === "function") {
     const reportHtml = await created[0].text();
     check("report contains risk badge with index", /risk index \d+\/100/.test(reportHtml));
-    check("report contains 'What Drove The Score'", /What Drove The Score/.test(reportHtml));
+    check("report contains the driver section", /what drove the score/i.test(reportHtml));
     check("report contains ensemble meta", /4-model ensemble/.test(reportHtml));
   }
 

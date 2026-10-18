@@ -286,7 +286,9 @@ function runAnalysis() {
 
   // === DISPLAY RESULTS ===
   document.getElementById("result").classList.remove("hidden");
-  document.getElementById("riskLevel").innerText = ml
+  const riskEl = document.getElementById("riskLevel");
+  riskEl.className = ml ? `risk level-${ml.classIndex}` : "risk";
+  riskEl.innerText = ml
     ? `Burnout Risk Level: ${finalRisk} · risk index ${Math.round(ml.riskIndex * 100)}/100`
     : `Burnout Risk Level: ${finalRisk}`;
 
@@ -417,16 +419,9 @@ function renderList(id, items) {
 
 function toggleTheme() {
   const body = document.body;
-  const icon = document.getElementById("themeIcon");
   const toggle = document.querySelector(".theme-toggle");
-
-  toggle.classList.add("animate");
-
-  setTimeout(() => {
-    body.classList.toggle("dark");
-    icon.textContent = body.classList.contains("dark") ? "☀️" : "🌙";
-    toggle.classList.remove("animate");
-  }, 200);
+  body.classList.toggle("dark");
+  toggle.setAttribute("aria-pressed", body.classList.contains("dark") ? "true" : "false");
 }
 
 function downloadReport() {
@@ -446,12 +441,20 @@ function downloadReport() {
 
   const driversSection = drivers.length
     ? `<div class="section">
-        <h2>What Drove The Score</h2>
+        <h2>What drove the score</h2>
         <ul class="signals-list">
           ${drivers.map(d => `<li>${d}</li>`).join('')}
         </ul>
       </div>`
     : "";
+
+  const riskBadgeClass = /Risk Level: Low/.test(riskLevel)
+    ? "level-0"
+    : /Risk Level: Medium/.test(riskLevel)
+      ? "level-1"
+      : /Risk Level: High/.test(riskLevel)
+        ? "level-2"
+        : "";
 
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -466,383 +469,213 @@ function downloadReport() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BurnoutCheck Assessment Report</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <title>BurnoutCheck — Assessment report</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
     body {
-      font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      padding: 40px 20px;
-      color: #1f2937;
-      line-height: 1.6;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f7f8fa;
+      color: #101828;
+      padding: 32px 16px;
+      font-size: 14px;
+      line-height: 1.55;
     }
-    
+
     .container {
-      max-width: 800px;
+      max-width: 760px;
       margin: 0 auto;
-      background: white;
-      border-radius: 20px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      background: #ffffff;
+      border: 1px solid #e4e7ec;
+      border-radius: 12px;
       overflow: hidden;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
     }
-    
+
     .header {
-      background: linear-gradient(135deg, #4f46e5, #6366f1);
-      color: white;
-      padding: 40px;
-      text-align: center;
+      padding: 28px 32px 22px;
+      border-bottom: 1px solid #e4e7ec;
     }
-    
+
     .header h1 {
-      font-size: 2.5rem;
-      font-weight: 700;
-      margin-bottom: 10px;
+      font-size: 20px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
     }
-    
+
     .header .subtitle {
-      font-size: 1.1rem;
-      opacity: 0.9;
+      margin-top: 2px;
+      font-size: 13px;
+      color: #667085;
     }
-    
+
     .header .timestamp {
-      margin-top: 20px;
-      font-size: 0.9rem;
-      opacity: 0.8;
-      border-top: 1px solid rgba(255, 255, 255, 0.2);
-      padding-top: 15px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #98a2b3;
     }
-    
-    .content {
-      padding: 40px;
-    }
-    
+
+    .content { padding: 28px 32px 8px; }
+
     .risk-badge {
-      display: inline-block;
-      padding: 12px 24px;
-      border-radius: 50px;
+      display: inline-flex;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 13px;
       font-weight: 600;
-      font-size: 1.1rem;
-      margin-bottom: 30px;
-      background: linear-gradient(135deg, #4f46e5, #6366f1);
-      color: white;
-      box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+      background: #f2f4f7;
+      color: #344054;
+      border: 1px solid #d0d5dd;
     }
-    
-    .section {
-      margin-bottom: 35px;
+
+    .risk-badge.level-0 { background: #ecfdf3; color: #067647; border-color: #abefc6; }
+    .risk-badge.level-1 { background: #fffaeb; color: #b54708; border-color: #fedf89; }
+    .risk-badge.level-2 { background: #fef3f2; color: #b42318; border-color: #fecdca; }
+
+    .meta-line {
+      margin: 10px 0 0;
+      font-size: 13px;
+      color: #667085;
     }
-    
+
+    .section { margin-top: 28px; }
+
     .section h2 {
-      font-size: 1.5rem;
-      color: #4f46e5;
-      margin-bottom: 15px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid #e5e7eb;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e4e7ec;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #667085;
     }
-    
-    .section h2::before {
-      content: '';
-      width: 6px;
-      height: 24px;
-      background: linear-gradient(135deg, #4f46e5, #6366f1);
-      border-radius: 3px;
-    }
-    
+
     .input-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-      margin-bottom: 30px;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
     }
-    
+
     .input-item {
+      padding: 10px 12px;
       background: #f9fafb;
-      padding: 15px;
-      border-radius: 10px;
-      border-left: 4px solid #4f46e5;
+      border: 1px solid #e4e7ec;
+      border-radius: 8px;
     }
-    
+
     .input-item .label {
-      font-size: 0.85rem;
-      color: #6b7280;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 5px;
+      color: #667085;
     }
-    
+
     .input-item .value {
-      font-size: 1.3rem;
+      margin-top: 2px;
+      font-size: 14px;
       font-weight: 600;
-      color: #1f2937;
+      color: #101828;
     }
-    
-    ul {
-      list-style: none;
-      padding: 0;
-    }
-    
+
+    ul { list-style: none; }
+
     li {
-      background: #f9fafb;
-      padding: 15px 20px;
-      margin-bottom: 12px;
-      border-radius: 10px;
-      border-left: 4px solid #4f46e5;
       position: relative;
-      padding-left: 45px;
+      padding: 9px 0 9px 16px;
+      border-bottom: 1px solid #f2f4f7;
     }
-    
+
+    li:last-child { border-bottom: 0; }
+
     li::before {
-      content: '✓';
+      content: '';
       position: absolute;
-      left: 15px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 24px;
-      height: 24px;
-      background: linear-gradient(135deg, #4f46e5, #6366f1);
-      color: white;
+      left: 2px;
+      top: 17px;
+      width: 4px;
+      height: 4px;
       border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.8rem;
-      font-weight: bold;
+      background: #98a2b3;
     }
-    
+
     .actions-list li::before {
       content: '→';
-      font-size: 1.2rem;
+      top: 8px;
+      width: auto;
+      height: auto;
+      background: none;
+      color: #667085;
+      font-size: 12px;
     }
-    
+
     .confidence {
-      background: #eff6ff;
-      padding: 20px;
-      border-radius: 10px;
-      text-align: center;
-      font-weight: 600;
-      color: #1e40af;
-      border: 2px dashed #4f46e5;
-    }
-    
-    .footer {
+      margin-top: 24px;
+      padding: 12px 14px;
       background: #f9fafb;
-      padding: 30px;
-      text-align: center;
-      color: #6b7280;
-      font-size: 0.9rem;
-      border-top: 1px solid #e5e7eb;
-    }
-    
-    .footer strong {
-      color: #1f2937;
-    }
-    
-    .print-button {
-      background: linear-gradient(135deg, #4f46e5, #6366f1);
-      color: white;
-      border: none;
-      padding: 12px 30px;
+      border: 1px solid #e4e7ec;
       border-radius: 8px;
-      font-size: 1rem;
+      font-size: 13px;
+      color: #475467;
+    }
+
+    .footer {
+      margin-top: 28px;
+      padding: 20px 32px;
+      border-top: 1px solid #e4e7ec;
+      font-size: 12px;
+      color: #667085;
+    }
+
+    .footer p { margin-bottom: 6px; }
+    .footer p:last-child { margin-bottom: 0; }
+
+    .print-button {
+      margin-top: 18px;
+      padding: 10px 18px;
+      background: #1d4ed8;
+      color: #ffffff;
+      border: 0;
+      border-radius: 8px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      margin-top: 20px;
-      box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
-      transition: transform 0.2s ease;
     }
-    
-    .print-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
-    }
-    
+
+    .print-button:hover { background: #1a44bd; }
+
     @media print {
-      body {
-        background: white;
-        padding: 0;
-      }
-      .print-button {
-        display: none;
-      }
+      body { background: #ffffff; padding: 0; }
+      .container { border: 0; border-radius: 0; box-shadow: none; }
+      .print-button { display: none; }
     }
-    
+
     @media (max-width: 768px) {
-      body {
-        padding: 10px;
-      }
-      
-      .container {
-        border-radius: 12px;
-      }
-      
-      .header {
-        padding: 25px 20px;
-      }
-      
-      .header h1 {
-        font-size: 1.8rem;
-      }
-      
-      .header .subtitle {
-        font-size: 0.95rem;
-      }
-      
-      .header .timestamp {
-        font-size: 0.8rem;
-        margin-top: 15px;
-        padding-top: 12px;
-      }
-      
-      .content {
-        padding: 20px 15px;
-      }
-      
-      .risk-badge {
-        padding: 10px 20px;
-        font-size: 1rem;
-        margin-bottom: 20px;
-      }
-      
-      .section {
-        margin-bottom: 25px;
-      }
-      
-      .section h2 {
-        font-size: 1.2rem;
-        margin-bottom: 12px;
-        padding-bottom: 8px;
-      }
-      
-      .section h2::before {
-        width: 4px;
-        height: 20px;
-      }
-      
-      .input-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-        margin-bottom: 20px;
-      }
-      
-      .input-item {
-        padding: 12px;
-        border-left-width: 3px;
-      }
-      
-      .input-item .label {
-        font-size: 0.75rem;
-        margin-bottom: 4px;
-      }
-      
-      .input-item .value {
-        font-size: 1.1rem;
-      }
-      
-      li {
-        padding: 12px 15px;
-        padding-left: 40px;
-        margin-bottom: 10px;
-        font-size: 0.9rem;
-        border-left-width: 3px;
-      }
-      
-      li::before {
-        width: 20px;
-        height: 20px;
-        left: 12px;
-        font-size: 0.7rem;
-      }
-      
-      .actions-list li::before {
-        font-size: 1rem;
-      }
-      
-      .confidence {
-        padding: 15px;
-        font-size: 0.9rem;
-      }
-      
-      .print-button {
-        padding: 10px 20px;
-        font-size: 0.9rem;
-        margin-top: 15px;
-        width: 100%;
-      }
-      
-      .footer {
-        padding: 20px 15px;
-        font-size: 0.8rem;
-      }
-      
-      .footer p {
-        margin-bottom: 8px;
-      }
-      
-      .footer br {
-        display: none;
-      }
-    }
-    
-    @media (max-width: 480px) {
-      .header h1 {
-        font-size: 1.5rem;
-      }
-      
-      .header .subtitle {
-        font-size: 0.85rem;
-      }
-      
-      .input-grid {
-        grid-template-columns: 1fr;
-        gap: 10px;
-      }
-      
-      .section h2 {
-        font-size: 1.1rem;
-      }
-      
-      li {
-        font-size: 0.85rem;
-        padding: 10px 12px;
-        padding-left: 35px;
-      }
-      
-      li::before {
-        width: 18px;
-        height: 18px;
-        left: 10px;
-        font-size: 0.65rem;
-      }
+      body { padding: 12px; }
+      .header { padding: 20px; }
+      .content { padding: 20px; }
+      .footer { padding: 16px 20px; }
+      .input-grid { grid-template-columns: 1fr; }
+      .header h1 { font-size: 18px; }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>🧠 BurnoutCheck</h1>
-      <p class="subtitle">Personal Burnout Assessment Report</p>
-      <div class="timestamp">
-        Generated on ${dateStr} at ${timeStr}
-      </div>
+      <h1>BurnoutCheck</h1>
+      <p class="subtitle">Personal burnout assessment report</p>
+      <p class="timestamp">Generated ${dateStr} at ${timeStr}</p>
     </div>
-    
+
     <div class="content">
-      <div style="text-align: center;">
-        <div class="risk-badge">${riskLevel}</div>
-        <p style="color:#6b7280; font-size:0.95rem; margin-top:12px;">${mlMeta}</p>
-      </div>
-      
+      <div class="risk-badge ${riskBadgeClass}">${riskLevel}</div>
+      <p class="meta-line">${mlMeta}</p>
+
       <div class="section">
-        <h2>Your Inputs</h2>
+        <h2>Your inputs</h2>
         <div class="input-grid">
           <div class="input-item">
             <div class="label">Sleep</div>
@@ -853,15 +686,15 @@ function downloadReport() {
             <div class="value">${breaksText}</div>
           </div>
           <div class="input-item">
-            <div class="label">Screen Time</div>
+            <div class="label">Screen time</div>
             <div class="value">${screen} hours</div>
           </div>
           <div class="input-item">
-            <div class="label">Study/Work Pressure</div>
+            <div class="label">Study/work pressure</div>
             <div class="value">${pressureText}</div>
           </div>
           <div class="input-item">
-            <div class="label">Stress Level</div>
+            <div class="label">Stress</div>
             <div class="value">${stress}/5</div>
           </div>
           <div class="input-item">
@@ -870,40 +703,39 @@ function downloadReport() {
           </div>
         </div>
       </div>
-      
+
       ${driversSection}
-      
+
       <div class="section">
-        <h2>Patterns We Noticed</h2>
+        <h2>Patterns we noticed</h2>
         <ul class="signals-list">
           ${signals.map(signal => `<li>${signal}</li>`).join('')}
         </ul>
       </div>
-      
+
       <div class="section">
-        <h2>Recommended Actions</h2>
+        <h2>Recommended actions</h2>
         <ul class="actions-list">
           ${actions.map(action => `<li>${action}</li>`).join('')}
         </ul>
       </div>
-      
+
       <div class="confidence">
         ${confidence}
       </div>
-      
-      <div style="text-align: center;">
-        <button class="print-button" onclick="window.print()">📄 Print or Save as PDF</button>
-      </div>
+
+      <button class="print-button" onclick="window.print()">Print or save as PDF</button>
     </div>
-    
+
     <div class="footer">
-      <p><strong>Important Disclaimer:</strong> This tool is for awareness and self-reflection only.</p>
-      <p>It does not constitute medical advice. If you're experiencing persistent burnout symptoms,<br>please consult a healthcare professional or counselor.</p>
-      <p style="margin-top: 15px; color: #4f46e5; font-weight: 600;">BurnoutCheck - Approximate mental health analysis</p>
+      <p><strong>Important:</strong> This tool is for awareness and self-reflection only. It does not constitute medical advice.</p>
+      <p>If you are experiencing prolonged burnout symptoms, please talk to a healthcare professional or counselor.</p>
+      <p>BurnoutCheck — a self-check, not a diagnosis.</p>
     </div>
   </div>
 </body>
-</html>`;
+</html>
+`;
 
   const blob = new Blob([htmlContent], { type: 'text/html' });
   const link = document.createElement('a');
